@@ -22,6 +22,8 @@ public partial class BankBox : Container
 
     public override int DefaultMaxWeight => 0;
 
+    public override int DefaultMaxItems => GlobalMaxItems * 3;
+
     public override bool IsVirtualItem => true;
 
     public static bool SendDeleteOnClose { get; set; }
