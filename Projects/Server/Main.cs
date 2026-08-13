@@ -271,6 +271,8 @@ public static class Core
 
     public static CancellationTokenSource ClosingTokenSource { get; } = new();
 
+    public static event Action ShutdownRequested;
+
     public static bool Closing => ClosingTokenSource.IsCancellationRequested;
 
     public static bool Headless { get; private set; }
@@ -418,7 +420,13 @@ public static class Core
 
         logger.Information("Detected {Key} pressed.", keypress);
         e.Cancel = true;
-        Kill();
+        LoopContext.Post(
+            () =>
+            {
+                ShutdownRequested?.Invoke();
+                Kill();
+            }
+        );
     }
 
     internal static void DoKill(bool restart = false)

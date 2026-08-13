@@ -14,6 +14,8 @@ public static class SkillCheck
     private static TimeSpan _statGainDelay;
     private static TimeSpan _petStatGainDelay;
 
+    public static Func<Mobile, Skill, double> SkillGainChanceMultiplier { get; set; } = static (_, _) => 1.0;
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool RollStatIncreaseChance(double statGain) =>
         statGain / 33.3 * _statGainChanceMultiplier > Utility.RandomDouble();
@@ -105,7 +107,10 @@ public static class SkillCheck
         {
             if (skill.Base < 10.0) // Gain regardless of the AllowGain check
             {
-                Gain(from, skill);
+                if (RollSkillGain(from, skill, 1.0))
+                {
+                    Gain(from, skill);
+                }
             }
             else if (AllowGain(from, skill, amObj))
             {
@@ -128,7 +133,7 @@ public static class SkillCheck
                     gc *= 2;
                 }
 
-                if (gc >= Utility.RandomDouble())
+                if (RollSkillGain(from, skill, gc))
                 {
                     Gain(from, skill);
                 }
@@ -143,6 +148,10 @@ public static class SkillCheck
 
         return success;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool RollSkillGain(Mobile from, Skill skill, double chance) =>
+        Math.Clamp(chance * SkillGainChanceMultiplier(from, skill), 0.0, 1.0) >= Utility.RandomDouble();
 
     public static bool Mobile_SkillCheckTarget(
         Mobile from, SkillName skillName, object target, double minSkill,
