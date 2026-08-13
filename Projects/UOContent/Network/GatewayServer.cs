@@ -8,6 +8,8 @@ namespace Server.Network;
 
 public static partial class GatewayServer
 {
+    public static Action<ServerListEventArgs> AdditionalServerListHandler { get; set; }
+
     public class ServerListEventArgs
     {
         public ServerListEventArgs(NetState state, IAccount account)
@@ -33,4 +35,7 @@ public static partial class GatewayServer
 
     [GeneratedEvent(nameof(ServerListEvent))]
     public static partial void ServerListEvent(ServerListEventArgs e);
+
+    public static void InvokeAdditionalServerListHandler(ServerListEventArgs e) =>
+        AdditionalServerListHandler?.Invoke(e);
 }

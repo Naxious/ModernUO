@@ -594,6 +594,7 @@ public static class IncomingAccountPackets
             var serverListEventArgs = new GatewayServer.ServerListEventArgs(state, state.Account);
 
             GatewayServer.ServerListEvent(serverListEventArgs);
+            GatewayServer.InvokeAdditionalServerListHandler(serverListEventArgs);
 
             if (serverListEventArgs.Rejected)
             {
