@@ -471,6 +471,13 @@ public static class IncomingAccountPackets
         {
             state.Version = ap.Version;
         }
+        else if (_acceptExternalAuthIds)
+        {
+            // A relay ticket issued by a different shard process has no local window entry carrying
+            // the negotiated client version. Use this server's supported client data version so the
+            // character-list packet uses the layout expected by the managed client.
+            state.Version = UOClient.ServerClientVersion;
+        }
 
         state.Seeded = true;
 
