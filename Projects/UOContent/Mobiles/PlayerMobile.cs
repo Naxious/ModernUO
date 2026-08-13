@@ -1899,6 +1899,11 @@ namespace Server.Mobiles
                     }
                 }
 
+                if (Young)
+                {
+                    list.Add(new CallbackEntry(1060668, ShowYoungProtectionStatus)); // INFORMATION
+                }
+
                 var house = BaseHouse.FindHouseAt(this);
 
                 if (house != null)
@@ -3803,12 +3808,6 @@ namespace Server.Mobiles
 
         public override void OnSkillChange(SkillName skill, double oldBase)
         {
-            if (Young && SkillsTotal >= 4500)
-            {
-                // You have successfully obtained a respectable skill level, and have outgrown your status as a young player!
-                ((Account)Account)?.RemoveYoungStatus(1019036);
-            }
-
             if (MLQuestSystem.Enabled)
             {
                 MLQuestSystem.HandleSkillGain(this, skill);
@@ -4004,21 +4003,6 @@ namespace Server.Mobiles
                 return false;
             }
 
-            if (Region is BaseRegion region && !region.YoungProtected)
-            {
-                return false;
-            }
-
-            if (from is BaseCreature creature && creature.IgnoreYoungProtection)
-            {
-                return false;
-            }
-
-            if (Quest?.IgnoreYoungProtection(from) == true)
-            {
-                return false;
-            }
-
             if (Core.Now - m_LastYoungMessage > TimeSpan.FromMinutes(1.0))
             {
                 m_LastYoungMessage = Core.Now;
@@ -4028,6 +4012,39 @@ namespace Server.Mobiles
             }
 
             return true;
+        }
+
+        private void ShowYoungProtectionStatus()
+        {
+            if (Account is not Account account || !Young || !account.Young)
+            {
+                SendAsciiMessage("Young protection is no longer active on your account.");
+                return;
+            }
+
+            account.CheckYoung();
+
+            if (!Young || !account.Young)
+            {
+                return;
+            }
+
+            var remaining = Server.Accounting.Account.YoungDuration - account.TotalGameTime;
+            var totalMinutes = Math.Max((int)Math.Ceiling(remaining.TotalMinutes), 0);
+            var hours = totalMinutes / 60;
+            var minutes = totalMinutes % 60;
+            var hourLabel = hours == 1 ? "hour" : "hours";
+            var minuteLabel = minutes == 1 ? "minute" : "minutes";
+
+            SendAsciiMessage(
+                $"Young protection remaining: {hours} {hourLabel} and {minutes} {minuteLabel} of played time."
+            );
+            SendAsciiMessage(
+                "Unsolicited monsters cannot attack you, but monsters may retaliate after you attack them."
+            );
+            SendAsciiMessage(
+                "To remove Young status permanently, say: I renounce my young player status"
+            );
         }
 
         public bool CheckYoungHealTime()

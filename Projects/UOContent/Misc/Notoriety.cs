@@ -206,16 +206,16 @@ namespace Server.Misc
 
             var map = from.Map;
 
+            if (!from.Player && pmFrom?.AccessLevel != AccessLevel.Player)
+            {
+                // Young protection applies before facet rules. Existing aggression still allows retaliation.
+                return CheckAggressor(from.Aggressors, target) || CheckAggressed(from.Aggressed, target) ||
+                       (target as PlayerMobile)?.CheckYoungProtection(from) != true;
+            }
+
             if ((map?.Rules & MapRules.HarmfulRestrictions) == 0)
             {
                 return true; // In felucca, anything goes
-            }
-
-            if (!from.Player && pmFrom?.AccessLevel != AccessLevel.Player)
-            {
-                // Uncontrolled NPCs are only restricted by the young system
-                return CheckAggressor(from.Aggressors, target) || CheckAggressed(from.Aggressed, target) ||
-                       (target as PlayerMobile)?.CheckYoungProtection(from) != true;
             }
 
             var fromGuild = GetGuildFor(from.Guild as Guild, from);
