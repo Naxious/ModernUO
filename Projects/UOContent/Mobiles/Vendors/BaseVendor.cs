@@ -245,42 +245,17 @@ namespace Server.Mobiles
                 return false;
             }
 
-            var bought = buyer.AccessLevel >= AccessLevel.GameMaster;
-
-            var cont = buyer.Backpack;
-            if (!bought && cont != null)
-            {
-                if (cont.ConsumeTotal(typeof(Gold), totalCost))
-                {
-                    bought = true;
-                }
-                else if (totalCost < 2000)
-                {
-                    SayTo(buyer, 500192); // Begging thy pardon, but thou canst not afford that.
-                }
-            }
-
-            if (!bought && totalCost >= 2000)
-            {
-                if (Banker.Withdraw(buyer, totalCost))
-                {
-                    bought = true;
-                    fromBank = true;
-                }
-                else
-                {
-                    SayTo(buyer, 500191); // Begging thy pardon, but thy bank account lacks these funds.
-                }
-            }
+            var bought = TryPayForPurchase(buyer, totalCost, out fromBank);
 
             if (!bought)
             {
+                SayTo(buyer, 500191); // Begging thy pardon, but thy bank account lacks these funds.
                 return false;
             }
 
             buyer.PlaySound(0x32);
 
-            cont = buyer.Backpack ?? buyer.BankBox;
+            var cont = buyer.Backpack ?? buyer.BankBox;
 
             foreach (var buy in validBuy)
             {
@@ -401,6 +376,29 @@ namespace Server.Mobiles
                 }
             }
 
+            return true;
+        }
+
+        internal static bool TryPayForPurchase(Mobile buyer, int totalCost, out bool fromBank)
+        {
+            fromBank = false;
+
+            if (buyer.AccessLevel >= AccessLevel.GameMaster)
+            {
+                return true;
+            }
+
+            if (buyer.Backpack?.ConsumeTotal(typeof(Gold), totalCost) == true)
+            {
+                return true;
+            }
+
+            if (!Banker.Withdraw(buyer, totalCost))
+            {
+                return false;
+            }
+
+            fromBank = true;
             return true;
         }
 
