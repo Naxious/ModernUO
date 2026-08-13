@@ -341,6 +341,7 @@ public static class IncomingAccountPackets
         if (m is PlayerMobile pm)
         {
             PlayerMobile.PlayerLoginEvent(pm);
+            ShardEventSink.InvokePlayerLogin(pm);
         }
     }
 

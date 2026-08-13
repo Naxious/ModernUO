@@ -12,6 +12,8 @@ public class GuardedRegion : BaseRegion
 
     private readonly Dictionary<Mobile, GuardTimer> m_GuardCandidates = new();
 
+    public static bool AllowMurdererVendorAccess { get; set; }
+
     [JsonConstructor] // Don't include parent, since it is special
     public GuardedRegion(string name, Map map, int priority, params Rectangle3D[] area) :
         base(name, map, priority, area) => GuardType = DefaultGuardType;
@@ -135,7 +137,7 @@ public class GuardedRegion : BaseRegion
     }
 
     public virtual bool CheckVendorAccess(BaseVendor vendor, Mobile from) =>
-        from.AccessLevel >= AccessLevel.GameMaster || IsDisabled() || !from.Murderer;
+        from.AccessLevel >= AccessLevel.GameMaster || AllowMurdererVendorAccess || IsDisabled() || !from.Murderer;
 
     public override bool OnBeginSpellCast(Mobile m, ISpell s)
     {

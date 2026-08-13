@@ -3287,6 +3287,7 @@ namespace Server.Mobiles
                 }
 
                 CreatureDeathEvent(this);
+                ShardEventSink.InvokeCreatureDeath(this);
 
                 CheckStatTimers();
                 return;
@@ -3417,6 +3418,7 @@ namespace Server.Mobiles
             }
 
             CreatureDeathEvent(this);
+            ShardEventSink.InvokeCreatureDeath(this);
         }
 
         [GeneratedEvent(nameof(CreatureDeletedEvent))]

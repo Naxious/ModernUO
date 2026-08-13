@@ -39,6 +39,8 @@ namespace Server.Items
 
         public virtual bool AllowLeather => false;
 
+        public virtual bool AllowArmor => false;
+
         public virtual bool AllowDyables => true;
 
         [SerializableProperty(2)]
@@ -201,6 +203,26 @@ namespace Server.Items
                         else if (!item.Movable)
                         {
                             from.SendLocalizedMessage(1049779); // You cannot dye statuettes that are locked down.
+                        }
+                        else
+                        {
+                            item.Hue = m_Tub.DyedHue;
+                            from.PlaySound(0x23E);
+                        }
+                    }
+                    else if (item is BaseArmor && m_Tub.AllowArmor)
+                    {
+                        if (!from.InRange(m_Tub.GetWorldLocation(), 1) || !from.InRange(item.GetWorldLocation(), 1))
+                        {
+                            from.SendLocalizedMessage(500446); // That is too far away.
+                        }
+                        else if (!item.Movable)
+                        {
+                            from.SendLocalizedMessage(1042419); // You may not dye armor which is locked down.
+                        }
+                        else if (item.Parent is Mobile)
+                        {
+                            from.SendLocalizedMessage(500861); // Can't dye armor that is being worn.
                         }
                         else
                         {

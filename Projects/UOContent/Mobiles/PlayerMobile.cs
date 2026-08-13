@@ -2591,6 +2591,7 @@ namespace Server.Mobiles
             }
 
             PlayerDeathEvent(this);
+            ShardEventSink.InvokePlayerDeath(this);
         }
 
         public override bool MutateSpeech(List<Mobile> hears, ref string text, ref object context)
@@ -3290,6 +3291,7 @@ namespace Server.Mobiles
             faction?.RemoveMember(this);
 
             PlayerDeletedEvent(this);
+            ShardEventSink.InvokePlayerDeleted(this);
         }
 
         public override void GetProperties(IPropertyList list)

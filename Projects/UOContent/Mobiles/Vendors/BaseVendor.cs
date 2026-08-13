@@ -37,6 +37,9 @@ namespace Server.Mobiles
         private static bool _enableVendorBuyOPL;
         private static bool _vendorInvulnerable;
 
+        public static Func<Mobile, double> BuyPriceMultiplier { get; set; } = _ => 1.0;
+        public static Func<Mobile, double> SellPriceMultiplier { get; set; } = _ => 1.0;
+
         public static void Configure()
         {
             // Turn off to remove tooltips while buying items
@@ -182,7 +185,7 @@ namespace Server.Mobiles
 
                     if (gbi != null)
                     {
-                        if (!ProcessSinglePurchase(buy, gbi, validBuy, ref controlSlots, ref fullPurchase, ref totalCost))
+                        if (!ProcessSinglePurchase(buyer, buy, gbi, validBuy, ref controlSlots, ref fullPurchase, ref totalCost))
                         {
                             return false;
                         }
@@ -203,7 +206,7 @@ namespace Server.Mobiles
                         {
                             if (ssi.IsSellable(item) && ssi.IsResellable(item))
                             {
-                                totalCost += ssi.GetBuyPriceFor(item) * amount;
+                                totalCost += AdjustBuyPrice(buyer, ssi.GetBuyPriceFor(item)) * amount;
                                 validBuy.Add(buy);
                                 break;
                             }
@@ -221,7 +224,7 @@ namespace Server.Mobiles
 
                     var gbi = LookupDisplayObject(mob);
 
-                    if (gbi != null && !ProcessSinglePurchase(buy, gbi, validBuy, ref controlSlots, ref fullPurchase, ref totalCost))
+                    if (gbi != null && !ProcessSinglePurchase(buyer, buy, gbi, validBuy, ref controlSlots, ref fullPurchase, ref totalCost))
                     {
                         return false;
                     }
@@ -530,7 +533,7 @@ namespace Server.Mobiles
                         }
                     }
 
-                    GiveGold += ssi.GetSellPriceFor(resp.Item) * amount;
+                    GiveGold += AdjustSellPrice(seller, ssi.GetSellPriceFor(resp.Item)) * amount;
                     break;
                 }
             }
@@ -895,7 +898,7 @@ namespace Server.Mobiles
                         buyItem.Name,
                         cont.Serial,
                         disp?.Serial ?? _COFFEE,
-                        buyItem.Price,
+                        AdjustBuyPrice(from, buyItem.Price),
                         buyItem.Amount,
                         buyItem.ItemID,
                         buyItem.Hue
@@ -936,7 +939,7 @@ namespace Server.Mobiles
                 {
                     if (ssi.IsSellable(item))
                     {
-                        price = ssi.GetBuyPriceFor(item);
+                        price = AdjustBuyPrice(from, ssi.GetBuyPriceFor(item));
                         name = ssi.GetNameFor(item);
                         break;
                     }
@@ -1058,7 +1061,7 @@ namespace Server.Mobiles
 
                     if (item.IsStandardLoot() && item.Movable && ssi.IsSellable(item))
                     {
-                        set.Add(new SellItemState(item, ssi.GetSellPriceFor(item), ssi.GetNameFor(item)));
+                        set.Add(new SellItemState(item, AdjustSellPrice(from, ssi.GetSellPriceFor(item)), ssi.GetNameFor(item)));
                     }
                 }
             }
@@ -1166,7 +1169,7 @@ namespace Server.Mobiles
         }
 
         private static bool ProcessSinglePurchase(
-            BuyItemResponse buy, GenericBuyInfo bii, List<BuyItemResponse> validBuy,
+            Mobile buyer, BuyItemResponse buy, GenericBuyInfo bii, List<BuyItemResponse> validBuy,
             ref int controlSlots, ref bool fullPurchase, ref int totalCost
         )
         {
@@ -1194,7 +1197,8 @@ namespace Server.Mobiles
                 return false;
             }
 
-            var totalCostLong = (long)totalCost + bii.Price * amount;
+            var unitPrice = AdjustBuyPrice(buyer, bii.Price);
+            var totalCostLong = (long)totalCost + unitPrice * amount;
 
             if (totalCostLong > int.MaxValue)
             {
@@ -1203,7 +1207,7 @@ namespace Server.Mobiles
                     bii.Name,
                     bii.ItemID,
                     totalCostLong,
-                    bii.Price,
+                    unitPrice,
                     bii.Amount
                 );
                 return false;
@@ -1212,6 +1216,19 @@ namespace Server.Mobiles
             totalCost = (int)totalCostLong;
 
             return true;
+        }
+
+        private static int AdjustBuyPrice(Mobile customer, int price)
+        {
+            var multiplier = Math.Max(0.0, BuyPriceMultiplier?.Invoke(customer) ?? 1.0);
+            return (int)Math.Min(int.MaxValue, Math.Ceiling(price * multiplier));
+        }
+
+        private static int AdjustSellPrice(Mobile customer, int price)
+        {
+            var multiplier = Math.Max(0.0, SellPriceMultiplier?.Invoke(customer) ?? 1.0);
+            var adjusted = (int)Math.Min(int.MaxValue, Math.Floor(price * multiplier));
+            return price > 0 && multiplier > 0.0 ? Math.Max(1, adjusted) : adjusted;
         }
 
         private static void ProcessValidPurchase(int amount, GenericBuyInfo bii, Mobile buyer, Container cont)
