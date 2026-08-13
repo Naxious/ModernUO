@@ -45,6 +45,8 @@ public static class Core
     private static bool _restartOnKill;
     private static volatile bool _performSnapshot;
     private static string _snapshotPath;
+    private static bool _shutdownRequested;
+    private static bool _shutdownSaveStarted;
 
     // A backstop, not a latency control: the wheel's tick rate bounds the sleep, so this only
     // limits the damage if a wake signal is ever missed. Measured across 1/2/4/8ms, 2 is optimal.
@@ -421,12 +423,61 @@ public static class Core
         logger.Information("Detected {Key} pressed.", keypress);
         e.Cancel = true;
         LoopContext.Post(
-            () =>
+            () => _shutdownRequested = true
+        );
+    }
+
+    private static void ProcessShutdownRequest()
+    {
+        if (!_shutdownRequested || _performProcessKill)
+        {
+            return;
+        }
+
+        if (_shutdownSaveStarted)
+        {
+            if (World.WorldState == WorldState.Running)
             {
-                ShutdownRequested?.Invoke();
                 Kill();
             }
-        );
+
+            return;
+        }
+
+        switch (World.WorldState)
+        {
+            case WorldState.PendingSave:
+            case WorldState.Saving:
+                // The pending snapshot includes everything that happened before the shutdown request.
+                _shutdownSaveStarted = true;
+                return;
+            case WorldState.WritingSave:
+                // Let this older snapshot finish, then request a fresh one from the Running state.
+                return;
+            case WorldState.Running:
+                if (ShutdownRequested == null)
+                {
+                    Kill();
+                    return;
+                }
+
+                ShutdownRequested.Invoke();
+
+                if (World.WorldState == WorldState.PendingSave)
+                {
+                    _shutdownSaveStarted = true;
+                }
+                else
+                {
+                    logger.Warning("Shutdown save handler did not start a world save; shutting down without one");
+                    Kill();
+                }
+
+                return;
+            default:
+                Kill();
+                return;
+        }
     }
 
     internal static void DoKill(bool restart = false)
@@ -706,6 +757,8 @@ public static class Core
                     EventLoopProfiler.PhaseEnd(LoopPhase.WorldSnapshot);
                     _performSnapshot = false;
                 }
+
+                ProcessShutdownRequest();
 
                 if (_performProcessKill)
                 {
