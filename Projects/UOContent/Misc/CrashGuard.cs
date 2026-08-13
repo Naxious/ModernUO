@@ -11,6 +11,8 @@ namespace Server.Misc
     {
         private static readonly ILogger logger = LogFactory.GetLogger(typeof(CrashGuard));
 
+        internal static string CrashReportDirectory => Path.Combine(Core.BaseDirectory, "Logs", "Crashes");
+
         private static bool Enabled;
         private static bool SaveBackup;
         private static bool RestartServer; // Disable this if using a daemon/service
@@ -114,8 +116,8 @@ namespace Server.Misc
                 var timeStamp = Utility.GetTimeStamp();
                 var fileName = $"Crash {timeStamp}.log";
 
-                var root = Core.BaseDirectory;
-                var filePath = Path.Combine(root, fileName);
+                var crashReportDirectory = PathUtility.EnsureDirectory(CrashReportDirectory);
+                var filePath = Path.Combine(crashReportDirectory, fileName);
 
                 using (var op = new StreamWriter(filePath))
                 {
