@@ -43,6 +43,10 @@ namespace Server.Items
 
         public virtual bool AllowDyables => true;
 
+        public virtual bool CanDyeDyable(Item item) => true;
+
+        public virtual bool AllowRecallRunes => AllowRunebooks;
+
         [SerializableProperty(2)]
         [CommandProperty(AccessLevel.GameMaster)]
         public int DyedHue
@@ -119,7 +123,7 @@ namespace Server.Items
                     {
                         from.SendLocalizedMessage(1151836); // You may not dye toggled quest items.
                     }
-                    else if (item is IDyable dyable && m_Tub.AllowDyables)
+                    else if (item is IDyable dyable && m_Tub.AllowDyables && m_Tub.CanDyeDyable(item))
                     {
                         if (!from.InRange(m_Tub.GetWorldLocation(), 1) || !from.InRange(item.GetWorldLocation(), 1))
                         {
@@ -178,7 +182,8 @@ namespace Server.Items
                             }
                         }
                     }
-                    else if (item is Runebook or RecallRune && m_Tub.AllowRunebooks)
+                    else if ((item is Runebook && m_Tub.AllowRunebooks) ||
+                             (item is RecallRune && m_Tub.AllowRecallRunes))
                     {
                         if (!from.InRange(m_Tub.GetWorldLocation(), 1) || !from.InRange(item.GetWorldLocation(), 1))
                         {
