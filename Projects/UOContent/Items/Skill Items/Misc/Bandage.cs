@@ -38,6 +38,12 @@ public partial class Bandage : Item, IDyable
 
     public override void OnDoubleClick(Mobile from)
     {
+        if (BandageContext.GetContext(from) != null)
+        {
+            from.SendAsciiMessage("You are already applying a bandage.");
+            return;
+        }
+
         if (from.InRange(GetWorldLocation(), Range))
         {
             from.RevealingAction();
@@ -56,6 +62,12 @@ public partial class Bandage : Item, IDyable
     {
         if (item is not Bandage b || b.Deleted)
         {
+            return;
+        }
+
+        if (BandageContext.GetContext(from) != null)
+        {
+            from.SendAsciiMessage("You are already applying a bandage.");
             return;
         }
 
@@ -453,6 +465,12 @@ public class BandageContext : Timer
 
     public static BandageContext BeginHeal(Mobile healer, Mobile patient)
     {
+        if (GetContext(healer) != null)
+        {
+            healer.SendAsciiMessage("You are already applying a bandage.");
+            return null;
+        }
+
         var creature = patient as BaseCreature;
 
         if (patient is Golem)
@@ -525,12 +543,9 @@ public class BandageContext : Timer
                 seconds = 5.0 + resDelay;
             }
 
-            var context = GetContext(healer);
-
-            context?.StopHeal();
             seconds *= 1000;
 
-            context = new BandageContext(healer, patient, TimeSpan.FromMilliseconds(seconds));
+            var context = new BandageContext(healer, patient, TimeSpan.FromMilliseconds(seconds));
             _table[healer] = context;
             context.Start();
 
