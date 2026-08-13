@@ -11,6 +11,12 @@ public static class AccountPrompt
     {
         if (Accounts.Count == 0)
         {
+            if (AccountHandler.ExternalAuthenticator != null)
+            {
+                logger.Information("Local owner prompt skipped; external account authentication is configured.");
+                return;
+            }
+
             logger.Warning("This server has no accounts.");
             logger.Information("Do you want to create the owner account now? (y/n):");
 
