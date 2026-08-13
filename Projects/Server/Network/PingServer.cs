@@ -26,7 +26,7 @@ public static class PingServer
 
     public static int MaxQueued { get; set; }
 
-    public static UdpClient[] Listeners { get; private set; }
+    public static UdpClient[] Listeners { get; private set; } = [];
 
     public static bool Enabled { get; private set; }
 
