@@ -40,6 +40,7 @@ public static class IncomingAccountPackets
 
     private static readonly Dictionary<int, AuthIDPersistence> _authIDWindow =
         new(_authIDWindowSize);
+    private static bool _acceptExternalAuthIds;
 
     internal struct AuthIDPersistence
     {
@@ -75,6 +76,10 @@ public static class IncomingAccountPackets
 
     public static unsafe void Configure()
     {
+        _acceptExternalAuthIds = ServerConfiguration.GetOrUpdateSetting(
+            "accountHandler.acceptExternalAuthIds",
+            false
+        );
         IncomingPackets.Register(0x00, &CreateCharacter, 104, outgameOnly: true);
         IncomingPackets.Register(0x5D, &PlayCharacter, 73, outgameOnly: true);
         IncomingPackets.Register(0x80, &AccountLogin, 62, outgameOnly: true);
@@ -455,14 +460,18 @@ public static class IncomingAccountPackets
 
         var authResult = ConsumeAuthId(authId, username, state.Address, out var ap);
 
-        if (authResult == AuthIdResult.Rejected)
+        if (authResult == AuthIdResult.Rejected && !_acceptExternalAuthIds)
         {
             state.LogInfo("Invalid client detected, disconnecting...");
             state.Disconnect("Unable to find auth id.");
             return;
         }
 
-        state.Version = ap.Version;
+        if (authResult != AuthIdResult.Rejected)
+        {
+            state.Version = ap.Version;
+        }
+
         state.Seeded = true;
 
         // Expired carries a usable entry; only the password verify skip is withheld.

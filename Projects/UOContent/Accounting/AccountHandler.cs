@@ -14,6 +14,13 @@ using Server.Regions;
 
 namespace Server.Misc;
 
+public delegate bool ExternalCredentialAuthenticator(
+    NetState state,
+    string username,
+    string password,
+    out Account account
+);
+
 public static class AccountHandler
 {
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(AccountHandler));
@@ -29,6 +36,8 @@ public static class AccountHandler
     private static readonly SearchValues<char> ForbiddenChars = SearchValues.Create("<>:\"/\\|?*");
 
     public static AccessLevel LockdownLevel { get; set; }
+    public static ExternalCredentialAuthenticator ExternalAuthenticator { get; set; }
+    public static Action<Account> AccountAuthenticated { get; set; }
 
     public static Dictionary<IPAddress, int> IPTable
     {
@@ -147,7 +156,18 @@ public static class AccountHandler
                 PasswordWorker.SetPassword(
                     acct,
                     pass,
-                    _ => from.SendMessage("The password to your account has changed.")
+                    success =>
+                    {
+                        if (success)
+                        {
+                            AccountAuthenticated?.Invoke(acct);
+                            from.SendMessage("The password to your account has changed.");
+                        }
+                        else
+                        {
+                            from.SendMessage("The password could not be changed. Please try again.");
+                        }
+                    }
                 );
             }
             else
@@ -291,6 +311,22 @@ public static class AccountHandler
 
         e.Accepted = false;
 
+        if (ExternalAuthenticator != null)
+        {
+            if (ExternalAuthenticator(e.State, un, pw, out var externalAccount) &&
+                externalAccount.HasAccess(e.State))
+            {
+                ApplyVerifiedLogin(e, externalAccount);
+            }
+            else
+            {
+                logger.Information("Login: {NetState} External credentials rejected for '{Username}'", e.State, un);
+                e.RejectReason = ALRReason.BadPass;
+            }
+
+            return;
+        }
+
         if (Accounts.GetAccount(un) is not Account acct)
         {
             // To prevent someone from making an account of just '' or a bunch of meaningless spaces
@@ -376,6 +412,7 @@ public static class AccountHandler
 
         acct.LogAccess(e.State);
         LoginAllowlist.RecordLogin(e.State?.Address);
+        AccountAuthenticated?.Invoke(acct);
     }
 
     private enum PasswordCheckDispatch
@@ -445,6 +482,24 @@ public static class AccountHandler
     {
         var un = e.Username;
         var pw = e.Password;
+
+        if (ExternalAuthenticator != null)
+        {
+            if (!ExternalAuthenticator(e.State, un, pw, out var externalAccount) ||
+                !externalAccount.HasAccess(e.State) || externalAccount.Banned)
+            {
+                logger.Information("Login: {NetState} External game credentials rejected for '{Username}'", e.State, un);
+                e.Accepted = false;
+                return;
+            }
+
+            externalAccount.LogAccess(e.State);
+            LoginAllowlist.RecordLogin(e.State?.Address);
+            e.State.Account = externalAccount;
+            e.Accepted = true;
+            e.CityInfo = CharacterCreation.GetStartingCities();
+            return;
+        }
 
         if (Accounts.GetAccount(un) is not Account acct)
         {
